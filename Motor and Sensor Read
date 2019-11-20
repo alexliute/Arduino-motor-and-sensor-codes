@@ -1,0 +1,68 @@
+
+// PUL, DIR, ENA positive to 5V vcc
+
+int NumRev = 3;
+int NumStep = 200;           // how many steps per rev
+int PUL = 7;                  //define Pulse pin
+int DIR = 6;                  //define Direction pin
+int ENA = 5;                  //define Enable Pin
+
+int readout;                 // readout value from the LVDT
+
+int lvdtpin = A2;
+
+int RevCount = 0;
+int StepCount = 0;
+
+void setup() {
+
+  pinMode (PUL, OUTPUT);
+  pinMode (DIR, OUTPUT);
+  pinMode (ENA, OUTPUT);
+  pinMode (lvdtpin, INPUT);
+  Serial.begin(9600);
+  Serial.println("Loop start");
+
+}
+
+void loop() {
+
+  for (int i = 1; i < 100; i ++) {
+    cwstep(10000);
+    readlvdt();
+  }
+
+} // main loop end
+
+int ccwstep(int waitperiod) {   // Clockwise Step Function. Define waitperiod when called
+
+  digitalWrite(DIR, LOW);     // DIR = Low: counter clock wise
+  digitalWrite(ENA, HIGH);
+  digitalWrite(PUL, HIGH);
+  delayMicroseconds(waitperiod);
+  digitalWrite(PUL, LOW);
+  delayMicroseconds(waitperiod);
+
+  return 0;
+}   // clockwisestep end
+
+
+int cwstep(int waitperiod) {   // Counter - Clockwise Step Function. Define waitperiod when called
+
+  digitalWrite(DIR, HIGH);     // DIR = HIGH: clock wise
+  digitalWrite(ENA, HIGH);
+  digitalWrite(PUL, HIGH);
+  delayMicroseconds(waitperiod);
+  digitalWrite(PUL, LOW);
+  delayMicroseconds(waitperiod);
+
+  return 0;
+}   // clockwisestep end
+
+int readlvdt(){
+  
+  readout = analogRead(lvdtpin);
+  Serial.println(readout);
+  return readout;
+  
+}
