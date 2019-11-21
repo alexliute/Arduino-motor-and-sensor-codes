@@ -55,9 +55,10 @@ void setup() {
 
 void loop() {
 
-  //  previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
+  //    previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
 
   while (true) {
+    previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
 
     cwstep(10000);     // move motor
 
@@ -116,7 +117,6 @@ int readlvdt() {
 
     filteredval = Kalmanread(readout);
 
-    //  filteredval = Kalmanread(filteredval); // double filtering
     //    Serial.print(millis());
     //    Serial.print(",");                  // time stamp
     Serial.print(filteredval);
@@ -136,7 +136,7 @@ int readlvdt() {
 
   previous_drop = current_drop;  // record the drop boolean for this cycle
 
-  previous_reading = readout;
+  //  previous_reading = readout;
 
   return 0;
 
@@ -146,14 +146,15 @@ int readlvdt() {
 
 int Kalmanread(float voltage) {
 
-  Pc = P + varProcess;
-  G = Pc / (Pc + varVolt);  // kalman gain
-  P = (1 - G) * Pc;
-  Xp = Xe;
-  Zp = Xp;
-  Xe = G * (voltage - Zp) + Xp; // the kalman estimate of the sensor voltage
+  //  Pc = P + varProcess;
+  //  G = Pc / (Pc + varVolt);  // kalman gain
+  //  P = (1 - G) * Pc;
+  //  Xp = Xe;
+  //  Zp = Xp;
+  //  Xe = G * (voltage - Zp) + Xp; // the kalman estimate of the sensor voltage
+
+  float diff = voltage - previous_reading;
+  Xe = previous_reading + diff * 0.02;
 
   return Xe;
 } // end of Kalman Filter function
-
-
