@@ -1,4 +1,13 @@
+// 2019/11/20
 
+// Author: Alex Liu
+
+// Chart recorder software V2. Stepper motor drive, sensor read, and Kaman filter
+float previous_reading;  // place holder for previous reading
+int previous_drop;   // 1 for yes, 0 for no
+unsigned long seconds;
+float max_drop = 0.9; // maximum percentage difference that will be filtered
+// Motor Set Up
 // PUL, DIR, ENA positive to 5V vcc
 
 int NumRev = 3;
@@ -7,12 +16,28 @@ int PUL = 7;                  //define Pulse pin
 int DIR = 6;                  //define Direction pin
 int ENA = 5;                  //define Enable Pin
 
-int readout;                 // readout value from the LVDT
+int RevCount = 0;
+int StepCount = 0;
+
+// Sensor Set up
+
+float readout;                 // readout value from the LVDT
+float filteredval;
 
 int lvdtpin = A2;
 
-int RevCount = 0;
-int StepCount = 0;
+// Kalman Filter Set up
+
+float varVolt = 3e-07;  // variance. start small. tweak as moving along
+float varProcess = 1e-8;
+float Pc = 0.0;
+float G = 0.0;
+float P = 1.0;
+float Xp = 0.0;
+float Zp = 0.0;
+float Xe = 0.0;
+
+// End of Variable Definition
 
 void setup() {
 
@@ -27,11 +52,15 @@ void setup() {
 
 void loop() {
 
-  for (int i = 1; i < 100; i ++) {
-    cwstep(10000);
-    readlvdt();
-  }
+  previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
 
+  while (true) {
+
+    cwstep(10000);     // move motor
+
+    readlvdt(previous_drop);    // update previous_reading
+
+  }
 } // main loop end
 
 int ccwstep(int waitperiod) {   // Clockwise Step Function. Define waitperiod when called
@@ -59,10 +88,61 @@ int cwstep(int waitperiod) {   // Counter - Clockwise Step Function. Define wait
   return 0;
 }   // clockwisestep end
 
-int readlvdt(){
-  
+// LVDT read function
+
+int readlvdt(previous_drop) {
+
+  // if ran with previous_drop = 0, the previous value is a drop and the current cycle will skip filtering. at the same time, the boolean
+  // will be set to 1 to allow the next cycle to be filtered.
+  // if ran with previous_drop = 0, the previous cycle was not a drop, and filtering should be carried out.
+
   readout = analogRead(lvdtpin);
-  Serial.println(readout);
+
+  if (readout / previous_reading < max_drop) {  // register as reading change if new reading is less than 80% of previous reading (including when previous value was also a drop)
+
+    current_drop = 1; // the current value is a drop; skip filtering in the next cycle
+
+  }
+
+  if (previous_drop == 0) {
+
+    //    Serial.print(millis());
+    //    Serial.print(",");                  // time stamp
+    Serial.print(readout);   // this would be "filtered" if everything checks out
+    Serial.print(",");
+    Serial.println(readout);
+    
+    previous_drop = 0; // don't filter the next readout
+    
+  }
+  else {
+    
+    filteredval = Kalmanread(readout);
+    //  filteredval = Kalmanread(filteredval); // double filtering
+    //    Serial.print(millis());
+    //    Serial.print(",");                  // time stamp
+    Serial.print(filteredval);
+    Serial.print(",");
+    Serial.println(readout);
+    continue_filter = 1; // filter the next readout
+
+  }
   return readout;
-  
-}
+
+} // end of LVDT read function
+
+// Kalman Filter Function
+
+int Kalmanread(float voltage) {
+
+  Pc = P + varProcess;
+  G = Pc / (Pc + varVolt);  // kalman gain
+  P = (1 - G) * Pc;
+  Xp = Xe;
+  Zp = Xp;
+  Xe = G * (voltage - Zp) + Xp; // the kalman estimate of the sensor voltage
+
+  return Xe;
+} // end of Kalman Filter function
+
+
