@@ -9,7 +9,7 @@ bool current_drop = 0;     // 1 for yes, 0 for no
 
 unsigned long seconds;
 
-float max_drop = 0.9; // maximum percentage difference that will be filtered
+float max_drop = .07; // maximum percentage difference that will be filtered
 // Motor Set Up
 // PUL, DIR, ENA positive to 5V vcc
 
@@ -32,7 +32,7 @@ int lvdtpin = A2;
 // Kalman Filter Set up
 
 float varVolt = 3e-07;  // variance. start small. tweak as moving along
-float varProcess = 1e-8;
+float varProcess = 1e-8;  // original 1e-8
 float Pc = 0.0;
 float G = 0.0;
 float P = 1.0;
@@ -55,7 +55,7 @@ void setup() {
 
 void loop() {
 
-  previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
+  //  previous_reading = analogRead(lvdtpin);          // this line will only run once; start off with a direct reading
 
   while (true) {
 
@@ -101,22 +101,27 @@ int readlvdt() {
 
   readout = analogRead(lvdtpin);
 
-  if (readout / previous_reading < max_drop) {  // register as reading change if new reading is less than 80% of previous reading (including when previous value was also a drop)
+  if (abs((readout - previous_reading) / previous_reading) > max_drop) { // register as reading change if new reading is less than 80% of previous reading (including when previous value was also a drop)
 
     current_drop = 1; // the current value is a drop; skip filtering in the next cycle
+
+  }
+  else {
+
+    current_drop = 0;
 
   }
 
   if (previous_drop == 0 && current_drop == 0) {
 
     filteredval = Kalmanread(readout);
+
     //  filteredval = Kalmanread(filteredval); // double filtering
     //    Serial.print(millis());
     //    Serial.print(",");                  // time stamp
     Serial.print(filteredval);
     Serial.print(",");
     Serial.println(readout);
-    continue_filter = 1; // filter the next readout
 
   }
   else {                // all other cases
@@ -127,13 +132,13 @@ int readlvdt() {
     Serial.print(",");
     Serial.println(readout);
 
-    previous_drop = 0; // don't filter the next readout
-
   }
 
   previous_drop = current_drop;  // record the drop boolean for this cycle
 
-  return readout;
+  previous_reading = readout;
+
+  return 0;
 
 } // end of LVDT read function
 
